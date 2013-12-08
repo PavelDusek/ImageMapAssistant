@@ -69,18 +69,21 @@ public class ImageMapAssistant extends JFrame implements ActionListener {
     private Cursor zoomInCursor, zoomOutCursor;
     private Toolkit toolkit;
     private JMenuBar menuBar;
-    private JMenu souborMenu, upravitMenu, nastaveniMenu, barvaMenu;
-    private JMenuItem otevritMenu, otevritUrlMenu, copyMenuItem;
-    private JRadioButtonMenuItem imapRBMItem, xmlRBMItem;
+    private JMenu souborMenu, upravitMenu, nastaveniMenu, barvaMenu, caraMenu;
+    private JMenuItem otevritMenu, otevritUrlMenu, exportMenu, copyMenuItem;
+    private JRadioButtonMenuItem imapRBMItem, xmlRBMItem, caraItem;
     private PressButton downButton, upButton, leftButton, rightButton;
     boolean formatXml = false;
     boolean copyOtherArea = false;
     private int lastRBMIIndex;
+    private int lastCaraIndex;
     Area activeAreaObject;
     List<Area> areaObjectsList = new ArrayList<Area>();
     List<Color> colors = new ArrayList<Color>();
     List<JRadioButtonMenuItem> colorRBMItems = new ArrayList<JRadioButtonMenuItem>();
+    List<Integer> sirkyCar = new ArrayList<Integer>();
     Color color = Color.GREEN;
+    int sirkaCary = 1;
 
     public ImageMapAssistant() {
         //Setting all the Swing components:
@@ -142,6 +145,12 @@ public class ImageMapAssistant extends JFrame implements ActionListener {
         otevritUrlMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, KeyEvent.CTRL_MASK));
         otevritUrlMenu.addActionListener(this);
         souborMenu.add(otevritUrlMenu);
+        exportMenu = new JMenuItem("Exportovat obrazce");
+        exportMenu.setActionCommand("export");
+        exportMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
+        exportMenu.addActionListener(this);
+        souborMenu.add(exportMenu);
+
         menuBar.add(souborMenu);
         upravitMenu = new JMenu("Upravit");
         copyMenuItem = new JMenuItem("Kopírovat");
@@ -173,6 +182,20 @@ public class ImageMapAssistant extends JFrame implements ActionListener {
             barvaMenu.add(rBMItem);
         }
         lastRBMIIndex = 5;
+        //sirka cary
+        caraMenu = new JMenu("Šířka čáry");
+        String[] sirkyCarNamesArray = { "1 px", "2 px", "3 px", "5 px", "10 px" };
+        Integer[] sirkyCarArray = { 1, 2, 3, 5, 10 };
+        List<String> sirkyCarNames = new ArrayList<String>();
+        Collections.addAll(sirkyCarNames, sirkyCarNamesArray);
+        Collections.addAll(sirkyCar, sirkyCarArray);
+        for (Iterator<String> it = sirkyCarNames.iterator(); it.hasNext(); ) {
+        	caraItem = new JRadioButtonMenuItem(it.next());
+        	caraItem.setActionCommand("cara");
+        	caraItem.addActionListener(this);
+        	caraMenu.add(caraItem);
+        }
+        lastCaraIndex = 0;
 
         JMenu formatMenu = new JMenu("Formát");
         imapRBMItem = new JRadioButtonMenuItem("Formát Image Map");
@@ -184,6 +207,7 @@ public class ImageMapAssistant extends JFrame implements ActionListener {
         xmlRBMItem.setActionCommand("setXml");
         menuBar.add(nastaveniMenu);
         nastaveniMenu.add(barvaMenu);
+        nastaveniMenu.add(caraMenu);
         nastaveniMenu.add(formatMenu);
         formatMenu.add(imapRBMItem);
         formatMenu.add(xmlRBMItem);
@@ -366,6 +390,29 @@ public class ImageMapAssistant extends JFrame implements ActionListener {
             }
 
         }
+        if (e.getActionCommand().equals("export")) {
+            int returnVal = fileChooser.showSaveDialog(this);
+            String path = "";
+            if (returnVal == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+                try {
+                	String extension = "png";
+                	int i = fileChooser.getSelectedFile().getPath().lastIndexOf(".");
+                	if (i > 0 ) {
+                		extension = fileChooser.getSelectedFile().getPath().substring(i+1);
+                	}
+                	
+                	BufferedImage bi = new BufferedImage( canvas.labelWidth, canvas.labelHeight, BufferedImage.TYPE_INT_ARGB);
+                	Graphics g = bi.createGraphics();
+                	canvas.paint(g);
+                	g.dispose();
+                	ImageIO.write( bi, extension, file );
+                } catch (Exception excp) {
+                    JOptionPane.showMessageDialog(this, excp.getLocalizedMessage(), "Error!", JOptionPane.ERROR_MESSAGE);                	
+                }
+            }
+        	
+        }
         if (e.getActionCommand().equals("openTag")) {
             outputArea.setText(outputArea.getText() + "\n<testobject>");
         }
@@ -465,6 +512,19 @@ public class ImageMapAssistant extends JFrame implements ActionListener {
         }
         if (e.getActionCommand().equals("color")) {
             setColor();
+        }
+        if (e.getActionCommand().equals("cara")) {
+        	setCara();
+        }
+    }
+    private void setCara() {
+        int caraItemsCount = caraMenu.getItemCount();
+        caraMenu.getItem(lastCaraIndex).setSelected(false);
+        for (int i = 0; i < caraItemsCount; i++) {
+            if (i != lastCaraIndex && caraMenu.getItem(i).isSelected()) {
+                lastCaraIndex = i;
+                sirkaCary = sirkyCar.get(i);
+            }
         }
     }
 
@@ -608,12 +668,14 @@ class JCanvas extends JPanel {
         } else {
             return new Dimension(image.getWidth(), image.getHeight());
         }
-    }
+    }   
     @Override
     public void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
 
+        //Graphics2D graphics2 = (Graphics2D) graphics;
         Color defaultColor = graphics.getColor();
+        //graphics2.setStroke()
 
         //draw the image
         if (image != null) {
